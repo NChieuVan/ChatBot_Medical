@@ -9,9 +9,12 @@ from dotenv import load_dotenv
 from src.prompt import *
 import os
 
+
 app = Flask(__name__)
 
+
 load_dotenv()
+
 PINECONE_API_KEY=os.environ.get('PINECONE_API_KEY')
 OPENAI_API_KEY=os.environ.get('OPENAI_API_KEY')
 
@@ -27,6 +30,9 @@ docsearch = PineconeVectorStore.from_existing_index(
     index_name=index_name,
     embedding=embeddings
 )
+
+
+
 
 retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k":3})
 
@@ -49,14 +55,26 @@ def index():
 
 
 
-@app.route("/get", methods=["GET", "POST"])
+@app.route("/chat", methods=["GET", "POST"])
 def chat():
     msg = request.form["msg"]
-    input = msg
-    print(input)
+    print("Question:", msg)
+
     response = rag_chain.invoke({"input": msg})
-    print("Response : ", response["answer"])
-    return str(response["answer"])
+    contexts = response['context']
+
+    # Chuyển page sang str để tránh TypeError
+    sources = list({  # dùng set để loại trùng
+    f"Page {str(item.metadata.get('page','unknown'))} - {item.metadata.get('source','unknown')}"
+    for item in contexts
+    })
+    source_text = "\n".join(sources)
+
+    # print("Response:", response["answer"])
+    # print("Sources:", source_text)
+
+    return f"{response['answer']}\n\nSources:\n{source_text}"
+
 
 
 
